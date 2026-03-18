@@ -1,25 +1,26 @@
 import { z } from "zod";
 import sharp from "sharp";
-import { readInputFile, fileResult, resolveOutputPath } from "../utils.js";
+import { readInput, fileResult, resolveOutputPath } from "../utils.js";
 
 export function registerRotateTool(server) {
   server.tool(
     "rotate",
     `Rotates an image by the specified angle (clockwise).
-Reads from input_path and writes the result to output_path.
-No image data passes through the AI — only file paths and metadata are exchanged.
+Reads from input_path (local file path or HTTP/HTTPS URL) and writes the result to output_path.
+No image data passes through the AI — only file paths/URLs and metadata are exchanged.
+In remote (HTTP) mode, the response includes a download_url for the processed image.
 
 Any angle is supported — not limited to 90° increments.
 Non-90° rotations enlarge the canvas and fill corners with a background colour.`,
     {
-      input_path:  z.string().describe("Absolute or relative path to the input image file"),
-      output_path: z.string().optional().describe("Path to save the rotated image. Defaults to <name>_rotated.<ext> in the same directory"),
+      input_path:  z.string().describe("Local file path or HTTP(S) URL to the input image"),
+      output_path: z.string().optional().describe("Path to save the rotated image. Defaults to auto-generated name"),
       angle:       z.number().describe("Rotation angle in degrees (clockwise). Common: 90, 180, 270"),
       background:  z.string().optional()
                      .describe('Background colour for non-90° rotations (e.g. "#ffffff"). Default: black'),
     },
     async ({ input_path, output_path, angle, background }) => {
-      const buf  = await readInputFile(input_path);
+      const buf  = await readInput(input_path);
       const opts = {};
       if (background) opts.background = background;
 

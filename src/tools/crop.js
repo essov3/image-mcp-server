@@ -1,13 +1,14 @@
 import { z } from "zod";
 import sharp from "sharp";
-import { readInputFile, fileResult, resolveOutputPath } from "../utils.js";
+import { readInput, fileResult, resolveOutputPath } from "../utils.js";
 
 export function registerCropTool(server) {
   server.tool(
     "crop",
     `Crops a region from an image.
-Reads from input_path and writes the result to output_path.
-No image data passes through the AI — only file paths and metadata are exchanged.
+Reads from input_path (local file path or HTTP/HTTPS URL) and writes the result to output_path.
+No image data passes through the AI — only file paths/URLs and metadata are exchanged.
+In remote (HTTP) mode, the response includes a download_url for the processed image.
 
 Two modes:
   1. Manual crop — specify left, top, width, height to extract an exact region.
@@ -18,8 +19,8 @@ Gravity values:
   north | northeast | east | southeast | south | southwest | west | northwest |
   centre | center | entropy (focus on busy region) | attention (focus on subject)`,
     {
-      input_path:  z.string().describe("Absolute or relative path to the input image file"),
-      output_path: z.string().optional().describe("Path to save the cropped image. Defaults to <name>_cropped.<ext> in the same directory"),
+      input_path:  z.string().describe("Local file path or HTTP(S) URL to the input image"),
+      output_path: z.string().optional().describe("Path to save the cropped image. Defaults to auto-generated name"),
       left:        z.number().int().min(0).optional().describe("Left offset in pixels (manual crop)"),
       top:         z.number().int().min(0).optional().describe("Top offset in pixels (manual crop)"),
       width:       z.number().int().positive().describe("Width of the crop region in pixels"),
@@ -31,7 +32,7 @@ Gravity values:
       ]).optional().describe("Crop gravity/position for smart crop (default: centre)"),
     },
     async ({ input_path, output_path, left, top, width, height, gravity }) => {
-      const buf = await readInputFile(input_path);
+      const buf = await readInput(input_path);
       let pipeline = sharp(buf);
 
       if (left !== undefined && top !== undefined) {
