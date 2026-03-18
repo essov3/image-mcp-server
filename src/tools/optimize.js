@@ -1,11 +1,13 @@
 import { z } from "zod";
 import sharp from "sharp";
-import { decodeInput, getMimeType } from "../utils.js";
+import { readInputFile, writeOutputFile, resolveOutputPath } from "../utils.js";
 
 export function registerOptimizeTool(server) {
   server.tool(
     "optimize",
     `Compresses / optimizes an image to reduce file size while preserving quality.
+Reads from input_path and writes the result to output_path.
+No image data passes through the AI — only file paths and a size-reduction report are exchanged.
 
 Format-specific behaviour:
   • JPEG — quality 1–100 (default 80), mozjpeg optimization enabled
@@ -14,16 +16,17 @@ Format-specific behaviour:
   • AVIF — quality 1–100 (default 50)
   • TIFF — quality 1–100 (default 80)
 
-Returns the optimized image together with a size-reduction report.`,
+Returns the output path together with a size-reduction report.`,
     {
-      image:    z.string().describe("Base64-encoded input image"),
-      quality:  z.number().int().min(1).max(100).optional()
-                  .describe("Compression quality 1–100 (lower = smaller file)"),
-      lossless: z.boolean().optional()
-                  .describe("Use lossless compression where supported (PNG, WebP)"),
+      input_path:  z.string().describe("Absolute or relative path to the input image file"),
+      output_path: z.string().optional().describe("Path to save the optimized image. Defaults to <name>_optimized.<ext> in the same directory"),
+      quality:     z.number().int().min(1).max(100).optional()
+                     .describe("Compression quality 1–100 (lower = smaller file)"),
+      lossless:    z.boolean().optional()
+                     .describe("Use lossless compression where supported (PNG, WebP)"),
     },
-    async ({ image, quality, lossless }) => {
-      const buf          = decodeInput(image);
+    async ({ input_path, output_path, quality, lossless }) => {
+      const buf          = await readInputFile(input_path);
       const meta         = await sharp(buf).metadata();
       const originalSize = buf.length;
 
@@ -58,27 +61,24 @@ Returns the optimized image together with a size-reduction report.`,
       const outputMeta = await sharp(result).metadata();
       const savedBytes = originalSize - result.length;
       const savedPct   = ((savedBytes / originalSize) * 100).toFixed(1);
+      const outPath    = resolveOutputPath(input_path, output_path, "optimized");
+
+      await writeOutputFile(result, outPath);
 
       return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              width:         outputMeta.width,
-              height:        outputMeta.height,
-              format:        outputMeta.format,
-              originalSize,
-              optimizedSize: result.length,
-              savedBytes,
-              savedPercent:  `${savedPct}%`,
-            }),
-          },
-          {
-            type: "image",
-            data: result.toString("base64"),
-            mimeType: getMimeType(outputMeta.format),
-          },
-        ],
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            output_path:   outPath,
+            width:         outputMeta.width,
+            height:        outputMeta.height,
+            format:        outputMeta.format,
+            originalSize,
+            optimizedSize: result.length,
+            savedBytes,
+            savedPercent:  `${savedPct}%`,
+          }),
+        }],
       };
     }
   );
