@@ -94,12 +94,14 @@ IMAGE_MCP_PORT=3000 IMAGE_MCP_AUTH_TOKEN=my-secret node index.js
 ### Docker
 
 ```bash
-docker build -t image-mcp-server .
+# Pull from Docker Hub
+docker pull essov3/image-mcp-server:latest
+
 docker run -p 3000:3000 \
   -e IMAGE_MCP_AUTH_TOKEN=my-secret \
   -e IMAGE_MCP_PORT=3000 \
   -v /your/images:/images \
-  image-mcp-server
+  essov3/image-mcp-server:latest
 ```
 
 ### Docker Compose
@@ -107,7 +109,7 @@ docker run -p 3000:3000 \
 ```yaml
 services:
   image-mcp-server:
-    build: .
+    image: essov3/image-mcp-server:latest  # or use build: . for local builds
     ports:
       - "3000:3000"
     environment:
