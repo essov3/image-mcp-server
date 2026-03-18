@@ -41,7 +41,7 @@ if (PORT) {
   /** sessionId → { server, transport } */
   const sessions = new Map();
 
-  app.get("/sse", bearerAuth, async (req, res) => {
+  app.get(["/", "/sse"], bearerAuth, async (req, res) => {
     const server    = createServer();
     const transport = new SSEServerTransport("/messages", res);
     sessions.set(transport.sessionId, { server, transport });
