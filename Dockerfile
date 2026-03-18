@@ -1,5 +1,7 @@
 FROM node:22-slim
 
+RUN apt-get update && apt-get upgrade -y && apt-get clean
+
 WORKDIR /app
 
 COPY package.json ./
