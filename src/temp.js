@@ -7,7 +7,7 @@
 import { mkdir, readdir, stat, unlink } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
-import { TEMP_DIR, TEMP_MAX_AGE_HOURS, BASE_URL } from "./config.js";
+import { TEMP_DIR, TEMP_MAX_AGE_HOURS, BASE_URL, AUTH_TOKEN } from "./config.js";
 
 /** Create the temp directory on startup. */
 export async function initTempDir() {
@@ -33,7 +33,8 @@ export function saveTempFile(buffer, ext) {
  * @returns {string}
  */
 export function getDownloadUrl(fileId) {
-  return `${BASE_URL}/download/${fileId}`;
+  const url = `${BASE_URL}/download/${fileId}`;
+  return AUTH_TOKEN ? `${url}?token=${encodeURIComponent(AUTH_TOKEN)}` : url;
 }
 
 /**

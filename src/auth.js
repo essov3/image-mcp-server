@@ -8,12 +8,15 @@ import { AUTH_TOKEN } from "./config.js";
 export function bearerAuth(req, res, next) {
   if (!AUTH_TOKEN) return next();
 
+  let token;
   const header = req.headers.authorization;
-  if (!header || !header.startsWith("Bearer ")) {
+  if (header && header.startsWith("Bearer ")) {
+    token = header.slice(7);
+  } else if (req.query.token) {
+    token = req.query.token;
+  } else {
     return res.status(401).json({ error: "Missing or invalid Authorization header" });
   }
-
-  const token = header.slice(7);
   const tokenBuf    = Buffer.from(token);
   const expectedBuf = Buffer.from(AUTH_TOKEN);
 
